@@ -63,4 +63,4 @@
 #*.RTF   diff=astextplain
 
 # To correct *.h files being labeled as C code.
-*.h linguist-language=cpp
+*.h linguist-language=C++
