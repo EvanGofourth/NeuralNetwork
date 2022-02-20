@@ -18,6 +18,21 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Layer.hpp" />
+    <ClInclude Include="Milk.hpp" />
+    <ClInclude Include="NeuralNetwork.hpp" />
+    <ClInclude Include="Neuron.hpp" />
+    <ClInclude Include="stb_image.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Layer.cpp" />
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="Milk.cpp" />
+    <ClCompile Include="NeuralNetwork.cpp" />
+    <ClCompile Include="Neuron.cpp" />
+    <ClCompile Include="UnitTests.cpp" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
@@ -139,21 +154,6 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="..\..\..\..\Desktop\MILK\Layer.cpp" />
-    <ClCompile Include="..\..\..\..\Desktop\MILK\main.cpp" />
-    <ClCompile Include="..\..\..\..\Desktop\MILK\Milk.cpp" />
-    <ClCompile Include="..\..\..\..\Desktop\MILK\NeuralNetwork.cpp" />
-    <ClCompile Include="..\..\..\..\Desktop\MILK\Neuron.cpp" />
-    <ClCompile Include="..\..\..\..\Desktop\MILK\UnitTests.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="..\..\..\..\Desktop\MILK\Layer.hpp" />
-    <ClInclude Include="..\..\..\..\Desktop\MILK\Milk.hpp" />
-    <ClInclude Include="..\..\..\..\Desktop\MILK\NeuralNetwork.hpp" />
-    <ClInclude Include="..\..\..\..\Desktop\MILK\Neuron.hpp" />
-    <ClInclude Include="..\..\..\..\Desktop\MILK\stb_image.h" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
