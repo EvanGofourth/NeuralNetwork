@@ -20,15 +20,6 @@ class Layer{
 
 
         /*******************************************************************************
-        * @Method: CONSTRUCTOR Layer(std::vector<Neuron*>* neurons)
-        * @Access: PUBLIC
-        * @Description: Constructs a Layer from a batch of data.
-        * @param batch: The batch used to build Neurons for the Layer.
-        *******************************************************************************/
-        Layer(std::vector<std::vector<double>*>* batch, bool isFinalLayer = false);
-
-
-        /*******************************************************************************
         * @Method: Output
         * @Access: PUBLIC
         * @Description: Returns the vector output of the Layer.

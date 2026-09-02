@@ -19,7 +19,8 @@
 #include<exception>
 #include<math.h>
 #include<algorithm>
-#include"Milk.hpp"
+#include"VectorUtilities.cpp"
+#include"RandomUtility.h"
 class Neuron{
     public:
 

@@ -11,9 +11,11 @@ class NeuralNetwork{
         * @Method: CONSTRUCTOR NeuralNetwork(std::vector<std::vector<double>*>* batch, std::vector<int>* subsequentLayerSizes)
         * @Access: PUBLIC
         * @Description: Constructs a neural network.
-        * @param layerSizes: 
-        *   A list of sizes for the layers in the NeuralNetwork. 
-        *   Note that when training, the first layer's size is dynamically fitted to the input data.
+        * @param layerSizes:
+        *   A list of sizes for the layers in the NeuralNetwork.
+        *   The first layer's neuron count stays fixed at layerSizes->at(0); each of its
+        *   neurons reads the entire flattened image (all pixels) as its input vector, same
+        *   as every other layer reads the entire previous layer's output.
         * @param categorizedTrainingDataDirectories: 
         *   A list to the directories containing your training data.
         *   Each directory must contain one classification of data for optimal training.
@@ -38,16 +40,18 @@ class NeuralNetwork{
         /*******************************************************************************
         * @Method: Train
         * @Access: PUBLIC
-        * @Description: Trains your neural network for 1 epoch.
+        * @Description: Trains your neural network for the given number of epochs.
+        *   Input data is reshuffled at the start of every epoch after the first.
+        * @param epochs: How many passes over the training data to run.
         *******************************************************************************/
-        void Train();
+        void Train(int epochs);
 
 
     private:
         double Loss(int correctDeduction);
         void SetTrainingDataPaths(std::vector<std::string>* categorizedTrainingDataDirectoryPaths);
-        void SetInputLayer(Layer* newLayer);
-        void Train(std::vector<std::vector<double>*>* batch, int correctDeduction);
+        void ShuffleInputData();
+        void Train(std::vector<double>* flattenedPixels, int correctDeduction, std::ofstream& accuracyFile);
         std::vector<std::vector<std::vector<double>*>*>* GetWeights();
         std::vector<std::vector<double>*>* GetBiases();
         void SaveNeuralNetworkToFile(std::string fileName);
@@ -56,7 +60,6 @@ class NeuralNetwork{
         std::vector<std::string>* _categorizedTrainingDataDirectoryPaths;
         std::vector<std::vector<std::string>*>* _categorizedTrainingDataFilePaths;
         std::vector<std::tuple<std::string, int>>* _shuffledInputData;
-        double _lowestLoss;
         int _positives;
         int _negatives;
         std::string _savedDataDirectory;

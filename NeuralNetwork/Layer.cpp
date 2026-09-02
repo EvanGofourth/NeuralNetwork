@@ -13,18 +13,6 @@ Layer::Layer(std::vector<Neuron*>* neurons)
     _neurons = neurons;
 }
 
-Layer::Layer(std::vector<std::vector<double>*>* batch, bool isFinalLayer)
-{
-    std::vector<Neuron*>* neurons = new std::vector<Neuron*>();
-    for(int i = 0; i < batch->size(); i++)
-    {
-        Neuron* n = new Neuron(batch->at(i));
-        n->IsInFinalLayer(isFinalLayer);
-        neurons->push_back(n);
-    }
-    _neurons = neurons;
-}
-
 std::vector<double>* Layer::Output()
 {
     std::vector<double> * output = new std::vector<double>();

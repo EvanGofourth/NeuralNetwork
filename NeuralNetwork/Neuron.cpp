@@ -17,7 +17,7 @@ Neuron::Neuron(std::vector<double>* inputVector)
     // initialize random weights.
     for (int i=0; i<_inputs->size(); i++)
     {
-        _weights->push_back(VectorUtilities<double>::GenerateRandomDouble(-1.0,1.0));
+        _weights->push_back(RandomUtility::GenerateRandomDouble(-1.0,1.0));
         _previousWeights->push_back(_weights->at(i));
     }
 }
@@ -30,9 +30,9 @@ void Neuron::Stimulate()
     for(int i = 0; i < _weights->size(); i++)
     {
         _previousWeights->push_back(_weights->at(i)); // stash previous weights to rollback if needed.
-        _weights->at(i) += 0.05 * VectorUtilities<double>::GenerateRandomDouble(-1.0, 1.0);
+        _weights->at(i) += 0.05 * RandomUtility::GenerateRandomDouble(-1.0, 1.0);
     }
-    _bias += 0.05 * VectorUtilities<double>::GenerateRandomDouble(-1.0, 1.0);
+    _bias += 0.05 * RandomUtility::GenerateRandomDouble(-1.0, 1.0);
 }
 
 void Neuron::Unstimulate()
@@ -75,7 +75,7 @@ double Neuron::Output()
     {
         while(_weights->size() != _inputs->size())
         {
-            _weights->push_back(VectorUtilities<double>::GenerateRandomDouble(-1.0, 1.0));
+            _weights->push_back(RandomUtility::GenerateRandomDouble(-1.0, 1.0));
         }
     }
     for(int i = 0; i < _inputs->size(); i++)

@@ -17,8 +17,9 @@ int main()
         // A string of the path to where you want your saved_data output.
         "C:/FAKE_PATH/saved_data"
     );
-    // 2) Train it.
-    nn->Train();
+    // 2) Train it. Argument is the number of epochs (passes over the training data);
+    //    input order is reshuffled at the start of every epoch after the first.
+    nn->Train(10);
 }
 ```
 ## Notes
