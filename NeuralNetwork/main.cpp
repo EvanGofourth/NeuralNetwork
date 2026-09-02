@@ -12,5 +12,5 @@ int main()
         "D:/DESKTOP/PROGRAMMING/Archive_Working/NeuralNetwork/TestData/SavedData"
     );
     // 2) Train it. Second argument is the number of epochs (passes over the training data).
-    nn->Train(2);
+    nn->Train(10);
 }

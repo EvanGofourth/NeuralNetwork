@@ -3,47 +3,41 @@ Neuron::~Neuron()
 {
     delete _inputs;
     delete _weights;
-    delete _previousWeights;
 }
 
 Neuron::Neuron(std::vector<double>* inputVector)
 {
-    _previousBias = 0.00;
-    _previousWeights = new std::vector<double>();
     _weights = new std::vector<double>();
     _isInFinalLayer = false;
-    _inputs = VectorUtilities<double>::Normalize(inputVector);
+    _inputs = new std::vector<double>(*inputVector); // copy; caller retains ownership of inputVector.
     _bias = 0.00;
+    _lastZ = 0.00;
     // initialize random weights.
     for (int i=0; i<_inputs->size(); i++)
     {
         _weights->push_back(RandomUtility::GenerateRandomDouble(-1.0,1.0));
-        _previousWeights->push_back(_weights->at(i));
     }
 }
 
-void Neuron::Stimulate()
+double Neuron::ActivationDerivative()
 {
-    _previousBias = _bias; // stash bias to rollback if needed.
-    delete _previousWeights;
-    _previousWeights = new std::vector<double>();
-    for(int i = 0; i < _weights->size(); i++)
-    {
-        _previousWeights->push_back(_weights->at(i)); // stash previous weights to rollback if needed.
-        _weights->at(i) += 0.05 * RandomUtility::GenerateRandomDouble(-1.0, 1.0);
-    }
-    _bias += 0.05 * RandomUtility::GenerateRandomDouble(-1.0, 1.0);
+    if (_isInFinalLayer)
+        return 1.00; // identity; softmax is applied layer-wide by NeuralNetwork::Output().
+    return _lastZ > 0.00 ? 1.00 : 0.00; // ReLU'
 }
 
-void Neuron::Unstimulate()
+std::vector<double>* Neuron::Backward(double dLoss_dActivation, double learningRate)
 {
-    delete _weights;
-    _weights = new std::vector<double>();
-    for (int i = 0; i < _previousWeights->size(); i++)
+    double delta = dLoss_dActivation * ActivationDerivative();
+    std::vector<double>* propagated = new std::vector<double>();
+    propagated->reserve(_weights->size());
+    for (int i = 0; i < _weights->size(); i++)
     {
-        _weights->push_back(_previousWeights->at(i));
+        propagated->push_back(delta * _weights->at(i)); // uses pre-update weight.
+        _weights->at(i) -= learningRate * delta * _inputs->at(i);
     }
-    _bias = _previousBias;
+    _bias -= learningRate * delta;
+    return propagated;
 }
 
 void Neuron::IsInFinalLayer(bool newValue)
@@ -54,7 +48,7 @@ void Neuron::IsInFinalLayer(bool newValue)
 void Neuron::SetInputs(std::vector<double>* newInputs)
 {
     delete _inputs;
-    _inputs = VectorUtilities<double>::Normalize(newInputs);
+    _inputs = new std::vector<double>(*newInputs); // copy; caller retains ownership of newInputs.
 }
 
 double Neuron::GetBias()
@@ -83,7 +77,8 @@ double Neuron::Output()
         output += (_weights->at(i) * _inputs->at(i));
     }
     output += _bias;
+    _lastZ = output;
     if(_isInFinalLayer)
-        return pow(2.71828182846, output); // softmax activation function
+        return output; // raw logit; NeuralNetwork::Output() applies softmax layer-wide.
     return output > 0.00 ? output : 0.00; // rectified linear activation function
 }

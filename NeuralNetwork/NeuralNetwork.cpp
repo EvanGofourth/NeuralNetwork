@@ -23,13 +23,15 @@ void NeuralNetwork::InitNeuralNetwork(Layer* firstLayer, std::vector<int>* subse
     {
         std::vector<Neuron*>* neurons = new std::vector<Neuron*>();
         int numberOfNeuronsInLayer = subsequentLayerSizes->at(i);
+        std::vector<double>* previousLayerOutput = layers->at(i)->Output();
         for(int j = 0; j < numberOfNeuronsInLayer; j++)
         {
-            Neuron * n = new Neuron(layers->at(i)->Output());
+            Neuron* n = new Neuron(previousLayerOutput);
             if(i == subsequentLayerSizes->size() - 1)
                 n->IsInFinalLayer(true);
             neurons->push_back(n);
         }
+        delete previousLayerOutput;
         Layer* layer = new Layer(neurons);
         layers->push_back(layer);
     }
@@ -38,18 +40,25 @@ void NeuralNetwork::InitNeuralNetwork(Layer* firstLayer, std::vector<int>* subse
 
 std::vector<double>* NeuralNetwork::Output()
 {
-    std::vector<double>* normalizedOutput = new std::vector<double>();
-    std::vector<double>* finalLayerOutput = _layers->at(_layers->size() - 1)->Output();
-    double normBase = 0.00;
-    for (int i = 0; i < finalLayerOutput->size(); i++)
-        normBase += finalLayerOutput->at(i);
-    for (int i = 0; i < finalLayerOutput->size(); i++)
-        normalizedOutput->push_back(finalLayerOutput->at(i) / normBase);
-    delete finalLayerOutput;
-    return normalizedOutput;
+    // Final layer neurons return raw logits; softmax is a layer-wide function so it's
+    // computed here, with max-subtraction for numerical stability.
+    std::vector<double>* logits = _layers->at(_layers->size() - 1)->Output();
+    double maxLogit = VectorUtilities<double>::Max(logits);
+    std::vector<double>* softmaxOutput = new std::vector<double>();
+    double sum = 0.00;
+    for (int i = 0; i < logits->size(); i++)
+    {
+        double e = exp(logits->at(i) - maxLogit);
+        softmaxOutput->push_back(e);
+        sum += e;
+    }
+    for (int i = 0; i < softmaxOutput->size(); i++)
+        softmaxOutput->at(i) /= sum;
+    delete logits;
+    return softmaxOutput;
 }
 
-void NeuralNetwork::Train(int epochs)
+void NeuralNetwork::Train(int epochs, double learningRate)
 {
     std::ofstream accuracyFile;
     accuracyFile.open(_savedDataDirectory + "/Accuracy.txt", std::ios_base::app);
@@ -68,9 +77,10 @@ void NeuralNetwork::Train(int epochs)
             std::cout << "Iteration: " << i + 1 << " of " << _shuffledInputData->size() << std::endl;
             std::cout << "Training from image: " << std::get<0>(_shuffledInputData->at(i)) << std::endl;
             Train(FileUtility::FlattenedRGBAVectorFromImage(
-                std::get<0>(_shuffledInputData->at(i))),
+                std::get<0>(_shuffledInputData->at(i)), 64, 64),
                 std::get<1>(_shuffledInputData->at(i)),
-                accuracyFile
+                accuracyFile,
+                learningRate
                 );
             if (i + 1 == _shuffledInputData->size())
             {
@@ -84,50 +94,30 @@ void NeuralNetwork::Train(int epochs)
     accuracyFile.close();
 }
 
-void NeuralNetwork::Train(std::vector<double>* flattenedPixels, int correctDeduction, std::ofstream& accuracyFile)
+void NeuralNetwork::Train(std::vector<double>* flattenedPixels, int correctDeduction, std::ofstream& accuracyFile, double learningRate)
 {
+    // Scale raw 0-255 pixel bytes down to [0,1]. Without this, the input layer's
+    // weighted sums (weights in [-1,1] times thousands of ~0-255 inputs) would be huge,
+    // making gradients unusable.
+    for (int i = 0; i < flattenedPixels->size(); i++)
+        flattenedPixels->at(i) /= 255.00;
+
     // Feed the whole image to the input layer as one flattened vector, same as every
     // other layer does with the previous layer's output. Each input neuron's weights
-    // now persist across images (auto-extended in Neuron::Output() if a larger image
-    // is seen), instead of the layer being rebuilt from scratch per image.
-    bool imageSkipped = false;
-    std::string skipReason;
-    std::vector<double>* layerOutput = nullptr;
-    try
-    {
-        _layers->at(0)->SetInputs(flattenedPixels);
-        for(int i = 1; i < _layers->size(); i++)
-        {
-            layerOutput = _layers->at(i-1)->Output();
-            _layers->at(i)->SetInputs(layerOutput);
-            delete layerOutput;
-            layerOutput = nullptr;
-        }
-    }
-    catch (const std::invalid_argument& e)
-    {
-        // A layer went dead (every neuron's pre-activation was <= 0, so its ReLU
-        // output summed to 0 and VectorUtilities::Normalize refused to divide by it).
-        imageSkipped = true;
-        skipReason = e.what();
-        delete layerOutput; // no-op if null; frees the in-flight layer output if SetInputs threw on it
-    }
+    // persist across images (auto-extended in Neuron::Output() if a larger image is
+    // seen), instead of the layer being rebuilt from scratch per image.
+    _layers->at(0)->SetInputs(flattenedPixels);
     delete flattenedPixels;
-    if (imageSkipped)
+    for(int i = 1; i < _layers->size(); i++)
     {
-        std::cout << "Skipping image: " << skipReason << std::endl;
-        return;
+        std::vector<double>* layerOutput = _layers->at(i-1)->Output();
+        _layers->at(i)->SetInputs(layerOutput);
+        delete layerOutput;
     }
-    // loss for this image under the weights carried over from the previous image,
-    // i.e. before this step's random perturbation.
-    double lossBeforeStimulation = Loss(correctDeduction);
-    std::cout << "Stimulating neurons..\n";
-    for (int i = 0; i < _layers->size(); i++)
-    {
-        _layers->at(i)->Stimulate();
-    }
+
     std::string deduction = "";
     std::vector<double>* output = Output();
+    double loss = Loss(output, correctDeduction);
     if(output->at(correctDeduction) == VectorUtilities<double>::Max(output))
     {
         deduction = "CORRECT";
@@ -139,23 +129,27 @@ void NeuralNetwork::Train(std::vector<double>* flattenedPixels, int correctDeduc
         _negatives++;
     }
     std::cout << "Output: " << VectorUtilities<double>::Join(output, ',') << std::endl;
-    delete output;
     std::cout << "Deduction: " << deduction << std::endl;
-    double lossAfterStimulation = Loss(correctDeduction);
+    std::cout << "Loss: " << loss << std::endl;
+
+    // Combined softmax + cross-entropy gradient w.r.t. the final layer's logits:
+    // dLoss/dz_i = softmax_i - y_i, where y is the one-hot correct-class vector.
+    std::vector<double>* dLoss_dActivations = new std::vector<double>();
+    for (int i = 0; i < output->size(); i++)
+        dLoss_dActivations->push_back(output->at(i) - (i == correctDeduction ? 1.00 : 0.00));
+    delete output;
+
+    std::cout << "Backpropagating..\n";
+    for (int i = (int)_layers->size() - 1; i >= 0; i--)
+    {
+        std::vector<double>* previousLayerGradient = _layers->at(i)->Backward(dLoss_dActivations, learningRate);
+        delete dLoss_dActivations;
+        dLoss_dActivations = previousLayerGradient;
+    }
+    delete dLoss_dActivations; // gradient w.r.t. raw pixel input; nothing upstream to propagate to.
+
     double accuracy = (double(_positives) / (double(_positives) + double(_negatives))) * 100.00;
-    if(lossAfterStimulation < lossBeforeStimulation)
-    {
-        std::cout << "Loss improved: " << lossBeforeStimulation << " -> " << lossAfterStimulation << std::endl;
-        std::cout << "Accuracy: " << accuracy << "%" << std::endl;
-    }
-    else
-    {
-        std::cout << "Unstimulating neurons..\n";
-        for (int i = 0; i < _layers->size(); i++)
-        {
-            _layers->at(i)->Unstimulate();
-        }
-    }
+    std::cout << "Accuracy: " << accuracy << "%" << std::endl;
     // write accuracy to the shared, already-open file.
     if (accuracyFile.is_open())
     {
@@ -262,10 +256,10 @@ void NeuralNetwork::SaveNeuralNetworkToFile(std::string fileName)
     }
 }
 
-double NeuralNetwork::Loss(int correctDeduction)
+double NeuralNetwork::Loss(std::vector<double>* output, int correctDeduction)
 {
-    return -log(this->Output()->at(correctDeduction));
-} 
+    return -log(output->at(correctDeduction));
+}
 
 std::vector<std::vector<double>*>* NeuralNetwork::GetBiases()
 {
